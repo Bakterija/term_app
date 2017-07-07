@@ -1,0 +1,19 @@
+#: import intcm kivy_soil.utils.intcm
+
+<RootWidget>:
+    BoxLayout:
+        id: top_box
+        size_hint_y: None
+        height: intcm(1)
+        pos: 0, root.height - self.height
+        canvas.before:
+            Color:
+                rgba: 0.3, 0.25, 0.6, 1
+            Rectangle:
+                size: self.size
+                pos: self.pos
+    BoxLayout:
+        id: bot_box
+        size_hint_y: None
+        height: root.height - top_box.height
+        pos: 0, 0
