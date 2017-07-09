@@ -1,6 +1,5 @@
 from kivy.properties import NumericProperty, StringProperty, ObjectProperty
 from kivy_soil.terminal_widget.functions._base import FunctionBase
-from kivy_soil.utils.simple_tcp import SimpleClient, SimpleServer
 from kivy_soil.terminal_widget import shared_globals
 from kivy.properties import ListProperty
 from kivy.logger import Logger

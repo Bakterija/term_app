@@ -1,22 +1,44 @@
-from threading import Thread
-from kivy.clock import Clock
+from kivy_soil.utils import get_unicode
 from flask import Flask, request
+from kivy.logger import Logger
+from kivy.clock import Clock
+from threading import Thread
+from gevent import pywsgi
 from time import sleep
+import traceback
+import urllib2
 import copy
 import json
+import os
 try:
     from queue import Queue, Empty
 except:
     from Queue import Queue, Empty
 
 app = Flask(__name__)
+log_level = 'error'
 app_data = {}
-
 
 class AppController:
     _instance = None
 
-    class _AppController(object):
+    class GeventLoggerInfo:
+        @staticmethod
+        def write(msg):
+            global log_level
+            if log_level == 'info':
+                msg = get_unicode(msg)
+                Logger.info('Gevent: %s' % (msg))
+
+    class GeventLoggerError:
+        @staticmethod
+        def write(msg):
+            global log_level
+            if log_level in ('info', 'error'):
+                msg = get_unicode(msg)
+                Logger.error('Gevent: %s' % (msg))
+
+    class _AppController:
         started = False
         log_append_queue = Queue()
         thread = None
@@ -30,19 +52,48 @@ class AppController:
         def on_data_append(self, _, value):
             self.log_append_queue.put(value)
 
-        def start(self):
+        def start(self, crt_path=None, key_path=None, log_lvl='error'):
+            global log_level
             if not self.started:
-                self.thread = Thread(target=self.run_app)
+                log_level = log_lvl
+                if not crt_path and not key_path:
+                    crt_path = 'data/term.crt'
+                    key_path = 'data/term.key'
+                self.thread = Thread(target=self._run_app, kwargs={
+                    'crt_path': crt_path, 'key_path': key_path})
                 self.thread.daemon = True
                 self.thread.start()
+
+        def _run_app(self, crt_path=None, key_path=None):
+            Logger.info('AppController: _run_app:')
+            try:
+                gevent_kwargs = {
+                    'log': AppController.GeventLoggerInfo,
+                    'error_log': AppController.GeventLoggerError}
+
+                if crt_path and key_path:
+                    found_ssl = True
+                    for x in (crt_path, key_path):
+                        if not os.path.exists(x):
+                            found_ssl = False
+                    if found_ssl:
+                        gevent_kwargs['certfile'] = crt_path
+                        gevent_kwargs['keyfile'] = key_path
+                    else:
+                        Logger.warning('AppController: _run_app: cert and key '
+                                       'were not found, starting without')
+                self.server = pywsgi.WSGIServer(
+                    ('0.0.0.0', 5000), app, **gevent_kwargs)
                 self.started = True
+                self.server.serve_forever()
+            except:
+                Logger.error('AppController: %s' % traceback.format_exc())
 
-        def run_app(self):
-            app.run(host='0.0.0.0')
-
-        def stop(self):
+        def _stop_app(self):
             if self.started:
-                app.stop()
+                self.server.stop()
+                Logger.info('AppController: stopped gevent')
+                self.started = False
 
         def update(self):
             try:
@@ -53,8 +104,12 @@ class AppController:
             except Empty:
                 return
 
-        @app.route('/get_logs_all')
+        @app.route('/')
         def index():
+            return 'Nothing here'
+
+        @app.route('/get_logs_all')
+        def get_logs_all():
             AppController.instance.update()
             return json.dumps(app_data['logs'])
 
@@ -82,6 +137,11 @@ class AppController:
             AppController.instance.parent.term_system.handle_input(
                 json_dict[u'data'])
             return str(json_dict[u'data'])
+
+        @app.route('/stop')
+        def stop_app():
+            AppController.instance._stop_app()
+            return 'App is stopping'
 
     instance = None
 
