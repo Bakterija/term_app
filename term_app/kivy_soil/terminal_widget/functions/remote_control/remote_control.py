@@ -8,9 +8,8 @@ from threading import Thread
 from time import sleep
 from functools import partial
 from .flask_app import AppController
+from .flask_client import RemoteClient
 import traceback
-import json
-import urllib2
 import os
 try:
     from queue import Queue, Empty
@@ -22,8 +21,7 @@ class Function(FunctionBase):
     name = 'remote_control'
     doc = 'Allows to control and be controlled by other terminal widgets'
     server = None
-    client_addr = ''
-    client_data_index = -1
+    client_instance = None
     methods_subclass = {
         'flask_server': '',
         'client': ''
@@ -32,50 +30,34 @@ class Function(FunctionBase):
     def on_import(self, term_system):
         self.term_system = term_system
 
-    def client(self, task, *args):
+    def client(self, task, ip_addr, **kwargs):
+        ret = ''
         if task == 'connect':
-            if self.client_addr:
-                ret = '# Already connected'
+            self.client_instance = RemoteClient(self)
+            self.client_instance.bind(on_disconnect=self.on_client_disconnect)
+            self.client_instance.bind(on_new_data=self.on_client_new_data)
+            self.client_instance.bind(on_send_fail=self.on_client_send_fail)
+            self.client_instance.bind(
+                on_connect_success=self.on_client_connect_success)
+            self.client_instance.bind(
+                on_connect_fail=self.on_client_connect_fail)
+
+            passwd = kwargs.get('passwd', None)
+            port = ip_addr.split(':')
+            if len(port) > 1:
+                ret = self.client_instance.connect(
+                    ip_addr, passwd=passwd, port=port[1])
             else:
-                ip_addr = args[0]
-                self.client_addr = ip_addr
-                url = 'http://%s:5000/get_log_len' % (ip_addr)
-                self.term_system.add_text('# Connecting to %s' % (url))
-                req = urllib2.Request(url)
-                self.client_data_index = int(urllib2.urlopen(req).read())
-                Clock.schedule_interval(self.client_update, 0.4)
-                self.term_system.grab_input = self
-                ret = '# Connected, %s' % (self.client_data_index)
+                ret = self.client_instance.connect(ip_addr, passwd=passwd)
+
         elif task == 'disconect':
-            if self.client_addr:
-                Clock.unschedule(self.client_update)
-                self.client_addr = ''
-                if self.term_system.grab_input == self:
-                    self.term_system.grab_input = None
-                ret = '# Disconnected'
+            if self.client_instance:
+                ret = self.client_instance.disconect()
             else:
                 ret = '# Client is not connected'
+            if self.term_system.grab_input == self:
+                self.term_system.grab_input = None
         return ret
-
-    def _client_send(self, text):
-        url = 'http://%s:5000/handle_input' % (self.client_addr)
-        headers = {'Content-Type' : 'application/json'}
-        data = json.dumps({'data': text})
-        req = urllib2.Request(url, data, headers)
-        response = urllib2.urlopen(req)
-        return response
-
-    def client_update(self, dt):
-        url = 'http://%s:5000/get_logs_after/%s' % (
-            self.client_addr, self.client_data_index)
-        response = urllib2.urlopen(url).read()
-        if response:
-            response = json.loads(response)
-            for x in response:
-                self.client_data_index += 1
-                x['text_raw'] = 'remote: %s' % (x['text_raw'])
-                self.term_system.add_text(
-                    x['text_raw'], text_time=x['time'], level=x['level'])
 
     def flask_server(self, *args):
         if args[0] == 'start':
@@ -88,8 +70,33 @@ class Function(FunctionBase):
         return ret
 
     def handle_input(self, term_system, term_globals, exec_locals, text):
-        if self.client_addr:
-            self._client_send(text)
+        ret = ''
+        if self.client_instance:
+            ret = self.client_instance.send(text)
         else:
-            return super(Function, self).handle_input(
+            ret = super(Function, self).handle_input(
                 term_system, term_globals, exec_locals, text)
+        return ret
+
+    def on_client_connect_success(self, cl):
+        self.term_system.grab_input = self
+        self.term_system.add_text(
+            '# %s: successfully connected' % cl.__class__.__name__)
+
+    def on_client_connect_fail(self, cl):
+        self.term_system.add_text(
+            '# %s: failed to connect' % cl.__class__.__name__)
+
+    def on_client_disconnect(self, _):
+        if self.term_system.grab_input == self:
+            self.term_system.grab_input = self
+        self.term_system.add_text(
+            '# %s: disconnected' % cl.__class__.__name__)
+
+    def on_client_send_fail(self, _):
+        self.term_system.add_text(
+            '# %s: failed to send input' % cl.__class__.__name__)
+
+    def on_client_new_data(self, _, data):
+        self.term_system.add_text(
+            data['text_raw'], text_time=data['time'], level=data['level'])

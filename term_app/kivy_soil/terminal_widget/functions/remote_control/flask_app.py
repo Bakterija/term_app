@@ -128,7 +128,7 @@ class AppController:
         @app.route('/get_log_len')
         def get_log_len():
             AppController.instance.update()
-            rett = len(app_data['logs']) - 1
+            rett = len(app_data['logs'])
             return str(rett)
 
         @app.route('/handle_input', methods=['POST'])

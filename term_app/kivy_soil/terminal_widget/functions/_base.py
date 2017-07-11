@@ -25,7 +25,8 @@ class FunctionBase(object):
                 self.name, 'help', method_name)
         return ret
 
-    def get_args_kwargs_from_text(self, text):
+    @staticmethod
+    def get_args_kwargs_from_text(text):
         start_str = (None, -1)
         strings_found = []
         kwargs_found = {}
@@ -121,16 +122,36 @@ class FunctionBase(object):
 
         return fname, method, args
 
+    @staticmethod
+    def get_method_args_kwargs(text):
+        fname = ''
+        method = ''
+        args = []
+        if text:
+            aspl = text.split(' ')
+            fname = aspl[0]
+            if len(aspl) > 1:
+                method = aspl[1]
+            if len(aspl) > 2:
+                args, kwargs = FunctionBase.get_args_kwargs_from_text(
+                    ' '.join(aspl[2:]))
+
+        return fname, method, args, kwargs
+
     def handle_input(self, term_system, term_globals, exec_locals, text):
-        fname, method, args = self.get_method_args(text)
+        fname, method, args, kwargs = self.get_method_args_kwargs(text)
         found = False
 
         if method in self.methods:
             m = getattr(self, method, None)
             if m:
                 found = True
-                if args:
+                if args and kwargs:
+                    result = m(*args, **kwargs)
+                elif args:
                     result = m(*args)
+                elif kwargs:
+                    result = m(**kwargs)
                 else:
                     result = m()
 

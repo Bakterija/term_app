@@ -325,17 +325,17 @@ class TerminalWidgetSystem(EventDispatcher):
         return globals()
 
     def handle_input(self, text, add_to_input_log=True):
-        self.dispatch('on_input', text)
-        text = text.rstrip()
-        if self.grab_input:
-            self.grab_input.handle_input(
-                self, globals(), self.exec_locals, text)
-            return
-        self.exec_locals['__ret_value__'] = {}
-        if self.handling_multiline_input or text and text[-1] == ':':
-            self.handle_input_multiline(text)
-        else:
-            try:
+        try:
+            self.dispatch('on_input', text)
+            text = text.rstrip()
+            if self.grab_input:
+                self.grab_input.handle_input(
+                    self, globals(), self.exec_locals, text)
+                return
+            self.exec_locals['__ret_value__'] = {}
+            if self.handling_multiline_input or text and text[-1] == ':':
+                self.handle_input_multiline(text)
+            else:
                 if not text:
                     self.add_text('\n')
                     return
@@ -353,14 +353,14 @@ class TerminalWidgetSystem(EventDispatcher):
                     except SyntaxError:
                         exec(text, globals(), self.exec_locals)
                     self.handle_return(self.exec_locals)
-            except Exception as e:
-                if self.use_logger:
-                    Logger.error('TerminalWidgetSystem: %s\n%s' % (
-                        e, traceback.format_exc()))
-                self.add_text('TerminalWidgetSystem: %s\n%s' % (
-                        e, traceback.format_exc()),level='exception')
-            if not self.typed_multilines and add_to_input_log:
-                self.add_to_input_log(text)
+        except Exception as e:
+            if self.use_logger:
+                Logger.error('TerminalWidgetSystem: %s\n%s' % (
+                    e, traceback.format_exc()))
+            self.add_text('TerminalWidgetSystem: %s\n%s' % (
+                    e, traceback.format_exc()),level='exception')
+        if not self.typed_multilines and add_to_input_log:
+            self.add_to_input_log(text)
 
     def add_to_input_log(self, text):
         len_input_log = len(self.input_log)
