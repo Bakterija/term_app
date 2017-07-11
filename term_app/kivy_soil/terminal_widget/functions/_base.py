@@ -118,15 +118,12 @@ class FunctionBase(object):
             if len(aspl) > 1:
                 method = aspl[1]
             if len(aspl) > 2:
-                args = tuple(aspl[2:])
-
-        return fname, method, args
+                args = aspl[2:]
+        return fname, method, tuple(args)
 
     @staticmethod
     def get_method_args_kwargs(text):
-        fname = ''
-        method = ''
-        args = []
+        fname, method, args, kwargs = '', '', [], {}
         if text:
             aspl = text.split(' ')
             fname = aspl[0]
@@ -135,8 +132,7 @@ class FunctionBase(object):
             if len(aspl) > 2:
                 args, kwargs = FunctionBase.get_args_kwargs_from_text(
                     ' '.join(aspl[2:]))
-
-        return fname, method, args, kwargs
+        return fname, method, tuple(args), kwargs
 
     def handle_input(self, term_system, term_globals, exec_locals, text):
         fname, method, args, kwargs = self.get_method_args_kwargs(text)
