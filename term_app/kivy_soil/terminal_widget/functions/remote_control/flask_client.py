@@ -133,6 +133,7 @@ class RemoteClient(EventDispatcher):
         else:
             url = '%s/get_logs_after/%s' % (
                 self._app_addr, self._server_data_index)
+            self._waiting_update = True
             req = UrlRequest(
                 url, on_success=self._on_update_success,
                 on_redirect=self._on_update_success,
@@ -145,9 +146,11 @@ class RemoteClient(EventDispatcher):
             self._server_data_index += 1
             x['text_raw'] = 'remote: %s' % (x['text_raw'])
             self.dispatch('on_new_data', x)
+        self._waiting_update = False
 
     def _on_update_fail(self, _, response):
         self.dispatch('on_update_fail')
+        self._waiting_update = False
 
     def on_new_data(self, data):
         pass
@@ -164,5 +167,5 @@ class RemoteClient(EventDispatcher):
     def on_disconnect(self):
         pass
 
-    def on_send_fail(self):
+    def on_send_fail(self, _, value):
         pass
