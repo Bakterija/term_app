@@ -1,5 +1,5 @@
 from kivy_soil.terminal_widget.shared_globals import DIR_APP, DIR_CONF
-from ._base import FunctionBase
+from ._base import PluginBase
 from kivy.clock import Clock
 import os
 
@@ -9,7 +9,7 @@ if not os.path.exists(PATH_AUTORUN):
         f.write('')
 
 
-class Function(FunctionBase):
+class Plugin(PluginBase):
     name = 'recorder'
     doc = ('Records and saves input for running later, '
            'can also list, read and delete saved files')

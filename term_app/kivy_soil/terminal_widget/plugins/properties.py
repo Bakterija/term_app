@@ -1,6 +1,6 @@
-from ._base import FunctionBase
+from ._base import PluginBase
 
-class Function(FunctionBase):
+class Plugin(PluginBase):
     name = 'properties'
     doc = 'Returns all properties of TerminalWidgetSystem'
     methods_subclass = {}

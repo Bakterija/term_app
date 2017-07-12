@@ -1,6 +1,6 @@
-from ._base import FunctionBase
+from ._base import PluginBase
 
-class Function(FunctionBase):
+class Plugin(PluginBase):
     name = 'finder'
     doc = 'Finds and returns text from TerminalWidgetSystem data'
     methods_subclass = {'in_log': '', 'in_string': '', 'in_list': ''}

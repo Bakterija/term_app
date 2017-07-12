@@ -9,10 +9,10 @@ elif platform == 'android':
     DIR_CONF = '/sdcard/github_bakterija/terminal_widget'
 else:
     DIR_CONF = '%s/github_bakterija/terminal_widget' % (DIR_HOME)
-DIR_FUNCTIONS = '%s/_functions/' % (DIR_CONF)
+DIR_PLUGINS = '%s/_plugins/' % (DIR_CONF)
 DIR_APP = '%s/%s/' % (DIR_CONF, APP_NAME)
 DIR_TERMINALS = '%s/terminals' % (DIR_CONF)
-for x in (DIR_CONF, DIR_FUNCTIONS, DIR_APP, DIR_TERMINALS):
+for x in (DIR_CONF, DIR_PLUGINS, DIR_APP, DIR_TERMINALS):
     if not os.path.exists(x):
         os.makedirs(x)
 

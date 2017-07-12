@@ -1,12 +1,14 @@
+from kivy.network.urlrequest import UrlRequest
+from kivy.properties import BooleanProperty
 from kivy_soil.utils import get_unicode
+from kivy.event import EventDispatcher
+from kivy.clock import mainthread
 from flask import Flask, request
 from kivy.logger import Logger
-from kivy.clock import Clock
 from threading import Thread
 from gevent import pywsgi
 from time import sleep
 import traceback
-import urllib2
 import copy
 import json
 import os
@@ -38,10 +40,13 @@ class AppController:
                 msg = get_unicode(msg)
                 Logger.error('Gevent: %s' % (msg))
 
-    class _AppController:
-        started = False
+    class _AppController(EventDispatcher):
+        started = BooleanProperty(False)
         log_append_queue = Queue()
+        using_ssl = False
         thread = None
+        ip = ''
+        port = 0
 
         def __init__(self, remote_control):
             self.parent = remote_control
@@ -64,6 +69,24 @@ class AppController:
                 self.thread.daemon = True
                 self.thread.start()
 
+        def stop(self):
+            protocol = 'http'
+            if self.using_ssl:
+                protocol = 'https'
+            url = '%s://%s:%s/stop' % (protocol, self.ip, self.port)
+            req = UrlRequest(url, verify=False)
+            while not req.result:
+                req.wait()
+            return '# UrlRequest: %s' % (req.result)
+
+        @mainthread
+        def _set_started_true(self):
+            self.started = True
+
+        @mainthread
+        def _set_started_false(self):
+            self.started = False
+
         def _run_app(self, crt_path=None, key_path=None):
             Logger.info('AppController: _run_app:')
             try:
@@ -82,9 +105,12 @@ class AppController:
                     else:
                         Logger.warning('AppController: _run_app: cert and key '
                                        'were not found, starting without')
+                self.ip = '0.0.0.0'
+                self.port = 5000
+                self.using_ssl = found_ssl
                 self.server = pywsgi.WSGIServer(
-                    ('0.0.0.0', 5000), app, **gevent_kwargs)
-                self.started = True
+                    (self.ip, self.port), app, **gevent_kwargs)
+                self._set_started_true()
                 self.server.serve_forever()
             except:
                 Logger.error('AppController: %s' % traceback.format_exc())
@@ -93,9 +119,9 @@ class AppController:
             if self.started:
                 self.server.stop()
                 Logger.info('AppController: stopped gevent')
-                self.started = False
+                self._set_started_false()
 
-        def update(self):
+        def _update(self):
             try:
                 while True:
                     data = self.log_append_queue.get_nowait()
@@ -110,24 +136,24 @@ class AppController:
 
         @app.route('/get_logs_all')
         def get_logs_all():
-            AppController.instance.update()
+            AppController.instance._update()
             return json.dumps(app_data['logs'])
 
         @app.route('/get_logs/<int:start>:<int:end>')
         def get_log_sliced(start, end):
-            AppController.instance.update()
+            AppController.instance._update()
             ret = app_data['logs'][start:end]
             return json.dumps(ret)
 
         @app.route('/get_logs_after/<int:index>')
         def get_log_after_index(index):
-            AppController.instance.update()
+            AppController.instance._update()
             ret = app_data['logs'][index:]
             return json.dumps(ret)
 
         @app.route('/get_log_len')
         def get_log_len():
-            AppController.instance.update()
+            AppController.instance._update()
             rett = len(app_data['logs'])
             return str(rett)
 

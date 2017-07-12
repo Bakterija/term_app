@@ -1,9 +1,9 @@
-from ._base import FunctionBase
+from ._base import PluginBase
 from kivy.clock import Clock
 from kivy.app import App
 
 
-class Function(FunctionBase):
+class Plugin(PluginBase):
     name = 'press_button'
     doc = 'Presses kivy buttons '
     methods_subclass = {'by_text': 'Searches button by text, presses when found'}

@@ -1,5 +1,5 @@
 from kivy.properties import NumericProperty, StringProperty, ObjectProperty
-from kivy_soil.terminal_widget.functions._base import FunctionBase
+from kivy_soil.terminal_widget.plugins._base import PluginBase
 from kivy_soil.terminal_widget import shared_globals
 from kivy.properties import ListProperty
 from kivy.logger import Logger
@@ -17,7 +17,7 @@ except:
     from Queue import Queue, Empty
 
 
-class Function(FunctionBase):
+class Plugin(PluginBase):
     name = 'remote_control'
     doc = 'Allows to control and be controlled by other terminal widgets'
     server = None
@@ -54,48 +54,61 @@ class Function(FunctionBase):
             if self.client_instance:
                 ret = self.client_instance.disconect()
             else:
-                ret = '# Client is not connected'
+                ret = '# remote_control: client is not connected'
             if self.term_system.grab_input == self:
                 self.term_system.grab_input = None
         return ret
 
     def flask_server(self, *args):
+        ret = ''
         if args[0] == 'start':
-            if self.server:
-                ret = '# Server already started'
+            if self.server and self.server.started:
+                ret = '# remote_control: server already started'
             else:
-                self.server = AppController(self)
+                if not self.server:
+                    self.server = AppController(self)
+                    self.server.bind(started=self.on_server_started)
                 self.server.start()
-                ret = '# Started server'
+        elif args[0] == 'stop':
+            if self.server and self.server.started:
+                ret = self.server.stop()
+            else:
+                ret = '# remote_control: server already stopped'
         return ret
+
+    def on_server_started(self, _, value):
+        if value:
+            self.term_system.add_text('# remote_control: server started')
+        else:
+            self.term_system.add_text('# remote_control: server stopped')
 
     def handle_input(self, term_system, term_globals, exec_locals, text):
         ret = ''
         if self.client_instance:
             ret = self.client_instance.send(text)
         else:
-            ret = super(Function, self).handle_input(
+            ret = super(Plugin, self).handle_input(
                 term_system, term_globals, exec_locals, text)
         return ret
 
     def on_client_connect_success(self, cl):
         self.term_system.grab_input = self
         self.term_system.add_text(
-            '# %s: successfully connected' % cl.__class__.__name__)
+            '# remote_control: successfully connected')
 
     def on_client_connect_fail(self, cl):
         self.term_system.add_text(
-            '# %s: failed to connect' % cl.__class__.__name__)
+            '# remote_control: failed to connect')
 
     def on_client_disconnect(self, _):
         if self.term_system.grab_input == self:
             self.term_system.grab_input = self
         self.term_system.add_text(
-            '# %s: disconnected' % cl.__class__.__name__)
+            '# remote_control: disconnected')
 
     def on_client_send_fail(self, _):
         self.term_system.add_text(
-            '# %s: failed to send input' % cl.__class__.__name__)
+            '# remote_control: failed to send input')
 
     def on_client_new_data(self, _, data):
         self.term_system.add_text(

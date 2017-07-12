@@ -1,6 +1,6 @@
-from ._base import FunctionBase
+from ._base import PluginBase
 
-class Function(FunctionBase):
+class Plugin(PluginBase):
     name = 'clear'
     doc = 'Clears TerminalWidgetSystem data'
     methods_subclass = {}

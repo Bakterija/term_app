@@ -1,4 +1,4 @@
-class FunctionBase(object):
+class PluginBase(object):
     name = ''
     doc = 'doc about this class'
     methods_subclass = {}
@@ -130,7 +130,7 @@ class FunctionBase(object):
             if len(aspl) > 1:
                 method = aspl[1]
             if len(aspl) > 2:
-                args, kwargs = FunctionBase.get_args_kwargs_from_text(
+                args, kwargs = PluginBase.get_args_kwargs_from_text(
                     ' '.join(aspl[2:]))
         return fname, method, tuple(args), kwargs
 

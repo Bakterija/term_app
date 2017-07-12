@@ -22,13 +22,13 @@ class TerminalWidgetSystem(EventDispatcher):
     "simplify various tasks with evaling and execing python code.\n"
     "It supports:\n"
     " - autocomplete,\n"
-    " - dynamic plugin function loading\n"
+    " - dynamic plugin loading\n"
     " - recording and replaying inputs\n\n"
     "It's properties are:\n\n"
     " - data: list property that stores all displayed data with time stamps "
     "and raw text\n"
-    " - functions: dict property that stores name, object ref pairs of loaded "
-    "plugin functions\n"
+    " - plugins: dict property that stores name, object ref pairs of loaded "
+    "plugins\n"
     " - input_log: list property that stores all input text\n"
     " - input_log_index: numeric property that stores log index of current "
     "input, default way to switch is to press up/down arrow\n"
@@ -46,7 +46,7 @@ class TerminalWidgetSystem(EventDispatcher):
     time_stamp_mode = NumericProperty(0)
     input_log_index = NumericProperty(0)
     term_widget = ObjectProperty()
-    functions = DictProperty()
+    plugins = DictProperty()
     input_log = ListProperty()
     write_input_log_to_file = True
     data = ListProperty()
@@ -75,13 +75,13 @@ class TerminalWidgetSystem(EventDispatcher):
             'term_widget': self.term_widget}
         for x in self.exec_locals:
             self.autocompleter.add_word(x)
-        for item in self.functions:
+        for item in self.plugins:
             self.autocompleter.add_word(item)
         for item in self.properties():
             self.autocompleter.add_word(item)
 
         shared_globals.set_app_name(app.name)
-        self._import_built_in_functions()
+        self._import_built_in_plugins()
         self._load_input_log()
 
     def on_data_append(self, *args):
@@ -108,8 +108,8 @@ class TerminalWidgetSystem(EventDispatcher):
         for x in self.input_log:
             self.add_autocomplete_words_from_text(x)
 
-    def _import_built_in_functions(self):
-        funcpath = os.path.split(os.path.realpath(__file__))[0] + '/functions/'
+    def _import_built_in_plugins(self):
+        funcpath = os.path.split(os.path.realpath(__file__))[0] + '/plugins/'
         files = os.listdir(funcpath)
         modules = []
         for x in files:
@@ -121,18 +121,18 @@ class TerminalWidgetSystem(EventDispatcher):
                     modules.append(x[:-dot-1])
 
         for x in modules:
-            func_package = 'kivy_soil.terminal_widget.functions.'
+            func_package = 'kivy_soil.terminal_widget.plugins.'
             func_module = '%s%s' % (func_package, x)
             try:
                 new_module = importlib.import_module(func_module)
-                new_func = new_module.Function()
+                new_func = new_module.Plugin()
                 new_func.on_import(self)
-                self.functions[new_func.name] = new_func
+                self.plugins[new_func.name] = new_func
             except:
                 Logger.error(
                     'TerminalWidgetSystem: failed to import %s\n %s' % (
                         func_module, traceback.format_exc()))
-        Logger.info('TerminalWidgetSystem: imported %s functions' % (
+        Logger.info('TerminalWidgetSystem: imported %s plugins' % (
             len(modules)))
 
     def on_input(self, *args):
@@ -266,7 +266,7 @@ class TerminalWidgetSystem(EventDispatcher):
                 if text:
                     if text[0] == '.':
                         func_name = text.split(' ')[0]
-                        func = self.functions.get(func_name[1:], None)
+                        func = self.plugins.get(func_name[1:], None)
                         if func:
                             ret = func.handle_input(
                                 self, globals(), self.exec_locals, text)
@@ -275,7 +275,7 @@ class TerminalWidgetSystem(EventDispatcher):
                             self.add_text('# Did not find plugin: "%s"' % (
                                 func_name))
                             self.add_text('# Available plugins are: %s' % (
-                                [x for x in self.functions]))
+                                [x for x in self.plugins]))
 
                     else:
                         try:

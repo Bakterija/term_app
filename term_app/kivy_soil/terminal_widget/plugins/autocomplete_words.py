@@ -1,6 +1,6 @@
-from ._base import FunctionBase
+from ._base import PluginBase
 
-class Function(FunctionBase):
+class Plugin(PluginBase):
     name = 'autocomplete_words'
     doc = 'Returns all current autocomplete words'
     methods_subclass = {}

@@ -1,8 +1,8 @@
-from ._base import FunctionBase
+from ._base import PluginBase
 from kivy.clock import Clock
 
 
-class Function(FunctionBase):
+class Plugin(PluginBase):
     name = 'wait'
     doc = 'stops term system input handling for arg[0] seconds'
     methods_subclass = {}
