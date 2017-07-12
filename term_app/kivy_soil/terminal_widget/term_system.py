@@ -7,6 +7,7 @@ from time import time, strftime, gmtime
 from kivy.logger import Logger
 from kivy.clock import Clock
 from functools import partial
+from kivy.compat import PY2
 from . import shared_globals
 from kivy.app import App
 import traceback
@@ -305,6 +306,8 @@ class TerminalWidgetSystem(EventDispatcher):
             self.input_log.append(text)
             if self.write_input_log_to_file:
                 try:
+                    if PY2 and isinstance(text, unicode):
+                        text = text.encode('utf-8')
                     with open(self.log_path, 'a') as f:
                         f.write(text + '\n')
                 except:
